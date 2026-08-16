@@ -54,6 +54,13 @@ def run_pipeline(audio_bytes: bytes) -> PipelineResult:
             timings=timings,
         )
 
+    if not transcript.text:
+        return PipelineResult(
+            answer="I couldn't hear any clear speech in the audio file — please try recording again.",
+            stopped_at="transcribe",
+            timings=timings,
+        )
+
     # Stage 2: classify
     intent = classify_query(transcript.text, timings=timings)
     if intent.verdict == QueryVerdict.UNSAFE:

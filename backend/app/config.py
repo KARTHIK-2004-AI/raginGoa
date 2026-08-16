@@ -4,11 +4,16 @@ Copy .env.example to .env and fill in real values.
 """
 import os
 from dataclasses import dataclass
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 @dataclass(frozen=True)
 class Settings:
     sarvam_api_key: str = os.getenv("SARVAM_API_KEY", "")
+    sarvam_model: str = os.getenv("SARVAM_MODEL", "saaras:v3")
+    sarvam_mode: str = os.getenv("SARVAM_MODE", "transcribe")
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     qdrant_url: str = os.getenv("QDRANT_URL", "http://localhost:6333")
     qdrant_api_key: str = os.getenv("QDRANT_API_KEY", "")
