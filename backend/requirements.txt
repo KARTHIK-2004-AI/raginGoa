@@ -4,6 +4,6 @@ python-multipart==0.0.9
 requests==2.32.3
 qdrant-client==1.11.0
 sentence-transformers==3.1.1
-anthropic==0.34.2
+google-genai>=0.1.1
 datasets==2.21.0
 numpy==1.26.4
