@@ -9,7 +9,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Settings:
     sarvam_api_key: str = os.getenv("SARVAM_API_KEY", "")
-    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     qdrant_url: str = os.getenv("QDRANT_URL", "http://localhost:6333")
     qdrant_api_key: str = os.getenv("QDRANT_API_KEY", "")
 

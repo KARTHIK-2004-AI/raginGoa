@@ -14,7 +14,7 @@ raginGoa/
         classify.py           Stage 2: off-topic/unsafe check
         retrieve.py            Stage 3: Qdrant search
         guardrails.py          Stage 4: grounding check
-        generate.py            Stage 5: Claude answer generation
+        generate.py            Stage 5: Gemini answer generation
         verify.py               Stage 6: post-hoc claim verification
         orchestrator.py         ties all 6 stages together
       indexing/
@@ -62,7 +62,7 @@ style those responses differently (e.g. a muted "couldn't answer" style).
 
 ```bash
 cd backend
-cp .env.example .env   # fill in SARVAM_API_KEY, ANTHROPIC_API_KEY
+cp .env.example .env   # fill in SARVAM_API_KEY, GEMINI_API_KEY
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 

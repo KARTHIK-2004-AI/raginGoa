@@ -6,18 +6,18 @@ Retries on transient API failure.
 """
 import time
 
-import anthropic
+from google import genai
 
 from app.config import settings
 from app.pipeline.types import Answer, Chunk, timed_stage
 
-_client: anthropic.Anthropic | None = None
+_client: genai.Client | None = None
 
 
-def _get_client() -> anthropic.Anthropic:
+def _get_client() -> genai.Client:
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        _client = genai.Client(api_key=settings.gemini_api_key)
     return _client
 
 
@@ -41,15 +41,11 @@ def generate(query: str, chunks: list[Chunk]) -> Answer:
     last_err: Exception | None = None
     for attempt in range(settings.llm_max_retries + 1):
         try:
-            resp = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=400,
-                messages=[{"role": "user", "content": prompt}],
-                timeout=settings.llm_timeout_seconds,
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
             )
-            text = "".join(
-                block.text for block in resp.content if getattr(block, "type", None) == "text"
-            )
+            text = response.text or ""
             cited_ids = [c.id for c in chunks if f"[{c.id}]" in text]
             return Answer(text=text.strip(), citations=cited_ids)
         except Exception as e:  # noqa: BLE001
