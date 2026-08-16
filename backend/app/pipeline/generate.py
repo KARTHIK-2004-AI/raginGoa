@@ -42,7 +42,7 @@ def generate(query: str, chunks: list[Chunk]) -> Answer:
     for attempt in range(settings.llm_max_retries + 1):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="models/gemini-3.6-flash",
                 contents=prompt,
             )
             text = response.text or ""

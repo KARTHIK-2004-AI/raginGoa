@@ -7,3 +7,4 @@ sentence-transformers==3.1.1
 google-genai>=0.1.1
 datasets==2.21.0
 numpy==1.26.4
+python-dotenv>=1.0.0
