@@ -4,8 +4,13 @@ MSMARCO-XI. Run once (and again any time chunking logic changes):
 
     python -m app.indexing.build_index
 
-STEP 1 before running for real: load the dataset and print one row to see
-the actual schema, then adjust chunk_structured.py's field names to match.
+Confirmed schema (ai4bharat/MSMARCO-XI dataset card):
+  - MUST load with a language subset, e.g. load_dataset(..., "hi", split="train")
+    There is no default config — pick a language your STT plan covers.
+  - `passages` is a dict of parallel lists: is_selected / English_passages /
+    Translated_passages — NOT a flat list of passage rows.
+  - train split alone is 10.1M rows — always pass sample_limit while testing,
+    only remove it once the full pipeline runs clean.
 """
 import uuid
 
@@ -48,14 +53,18 @@ def embed_and_upsert(client: QdrantClient, collection: str, chunks: list[RawChun
     client.upsert(collection_name=collection, points=points)
 
 
-def main(sample_limit: int | None = None) -> None:
-    print("Loading dataset...")
-    dataset = load_dataset("ai4bharat/MSMARCO-XI", split="train")
+def main(language: str = "hi", sample_limit: int | None = 200) -> None:
+    """
+    language: one of as/bn/gu/hi/kn/ml/mr/ne/or/pa/sa/ta/te/ur — must match
+    a language your STT choice (Sarvam) actually supports. Confirm against
+    Sarvam's docs before committing to one for the whole team.
+    """
+    print(f"Loading dataset (language={language})...")
+    dataset = load_dataset("ai4bharat/MSMARCO-XI", language, split="train")
     if sample_limit:
         dataset = dataset.select(range(min(sample_limit, len(dataset))))
 
     print(f"Loaded {len(dataset)} rows. First row keys: {list(dataset[0].keys())}")
-    print("^ Confirm these match what chunk_structured.py expects before trusting output.")
 
     embedder = SentenceTransformer(settings.embedding_model_name)
     client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key or None)
@@ -65,9 +74,13 @@ def main(sample_limit: int | None = None) -> None:
 
     for i, row in enumerate(dataset):
         doc_id = str(row.get("query_id", i))
-        text = row.get("passage_text") or row.get("text") or ""
-        if isinstance(text, list):
-            text = " ".join(text)
+
+        # For fixed/semantic strategies, flatten this row's translated
+        # passages into one text blob to re-chunk. Structured strategy
+        # chunks the passages dict directly (see chunk_structured.py).
+        passages_field = row.get("passages") or {}
+        translated = passages_field.get("Translated_passages", [])
+        text = " ".join(p for p in translated if p and p.strip())
 
         fixed_chunks = chunk_fixed(text, doc_id=doc_id)
         semantic_chunks = chunk_semantic(text, doc_id=doc_id, embedder=embedder)
@@ -84,6 +97,7 @@ def main(sample_limit: int | None = None) -> None:
 
 
 if __name__ == "__main__":
-    # Start with a small sample while you're still debugging schema/logic —
-    # bump sample_limit=None once build_index runs clean end to end.
-    main(sample_limit=200)
+    # Start with a small sample + a single language while you're still
+    # debugging — bump sample_limit=None once this runs clean end to end.
+    # Language MUST be one Sarvam actually supports; confirm before Day 2.
+    main(language="hi", sample_limit=200)
