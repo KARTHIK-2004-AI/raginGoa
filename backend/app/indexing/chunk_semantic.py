@@ -7,6 +7,12 @@ Needs a sentence splitter + the same embedder used elsewhere so vectors are
 comparable across strategies. Kept dependency-light (regex sentence split) —
 swap for a proper sentence tokenizer (e.g. nltk/spacy) if quality matters
 more than setup time.
+
+IMPORTANT: the split regex must include Hindi sentence-ending punctuation
+(danda । U+0964, double danda ॥ U+0965) alongside .!? — Hindi text does not
+use periods to end sentences. Without this, an entire Hindi passage is seen
+as a single "sentence" and chunk_semantic effectively degenerates into
+"one chunk per row" (confirmed: 200 rows -> only 244 chunks before this fix).
 """
 import re
 
@@ -15,7 +21,7 @@ from sentence_transformers import SentenceTransformer
 
 from app.indexing.chunk_fixed import RawChunk
 
-_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?।॥])\s+")
 
 
 def _split_sentences(text: str) -> list[str]:

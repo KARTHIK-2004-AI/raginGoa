@@ -35,21 +35,33 @@ def chunk_structured(row: dict, use_translated: bool = True) -> list[RawChunk]:
     passage_texts = passages_field.get(key, [])
     is_selected = passages_field.get("is_selected", [])
 
-    doc_id = str(row.get("query_id", "unknown"))
+    query_id = str(row.get("query_id", "unknown"))
     query_type = row.get("query_type", "unknown")
+    query_text = row.get("query", "")
+    answer_text = row.get("Answer", "")
 
     chunks: list[RawChunk] = []
     for position, passage_text in enumerate(passage_texts):
         if not passage_text or not passage_text.strip():
             continue
         selected_flag = is_selected[position] if position < len(is_selected) else 0
+
+        # Unique per passage, not just per query — prevents multiple
+        # passages from the same query_id from overwriting each other
+        # when used as a Qdrant point ID downstream.
+        chunk_id = f"{query_id}_{position}"
+
         chunks.append(
             RawChunk(
                 text=passage_text.strip(),
                 metadata={
-                    "doc_id": doc_id,
+                    "chunk_id": chunk_id,
+                    "doc_id": query_id,
                     "position": position,
+                    "query_id": query_id,
+                    "query_text": query_text,
                     "query_type": query_type,
+                    "answer_text": answer_text,
                     "is_selected": int(selected_flag),
                     "strategy": "structured",
                 },
