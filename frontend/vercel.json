@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "name": "ragingoa-frontend",
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

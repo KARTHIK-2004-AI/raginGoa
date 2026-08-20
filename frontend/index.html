@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAGinGoa — Multi-Stage Voice & Text Grounded RAG</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="background-glow"></div>
+
+  <header class="app-header">
+    <div class="header-container">
+      <div class="logo">
+        <div class="logo-icon"><i class="fa-solid fa-brain-circuit"></i></div>
+        <div class="logo-text">
+          <h1>RAGinGoa <span class="badge">Phase 4</span></h1>
+          <p>Grounded Voice & Text Multilingual RAG Engine</p>
+        </div>
+      </div>
+      <div class="header-stats">
+        <div class="stat-pill">
+          <i class="fa-solid fa-server"></i>
+          <span>Backend: <strong id="api-status">Connecting...</strong></span>
+        </div>
+        <div class="stat-pill">
+          <i class="fa-solid fa-bolt"></i>
+          <span>Warm Cache Active</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- Input Section: Voice & Text -->
+    <section class="input-section glass-panel">
+      <div class="input-header">
+        <h2><i class="fa-solid fa-comments"></i> Ask a Question</h2>
+        <div class="mode-toggle">
+          <button id="tab-voice" class="toggle-btn active"><i class="fa-solid fa-microphone"></i> Voice Input</button>
+          <button id="tab-text" class="toggle-btn"><i class="fa-solid fa-keyboard"></i> Text Input</button>
+        </div>
+      </div>
+
+      <!-- Voice Mode Panel -->
+      <div id="panel-voice" class="input-panel">
+        <div class="recorder-wrapper">
+          <button id="record-btn" class="record-button" title="Click to Record Audio">
+            <div class="record-icon-wrapper">
+              <i class="fa-solid fa-microphone"></i>
+            </div>
+            <div class="pulse-ring"></div>
+          </button>
+          <div class="recording-status">
+            <span id="record-state-text">Click the microphone to start speaking</span>
+            <span id="record-timer" class="timer-badge">00:00</span>
+          </div>
+          <!-- Mic Permission Error Banner -->
+          <div id="mic-error-banner" class="warning-banner hidden">
+            <i class="fa-solid fa-microphone-slash"></i>
+            <div>
+              <strong>Microphone Access Denied or Unavailable</strong>
+              <p>Please check your browser microphone permissions or switch to Text Input mode.</p>
+            </div>
+          </div>
+          <canvas id="waveform-canvas" width="600" height="60"></canvas>
+        </div>
+      </div>
+
+      <!-- Text Mode Panel -->
+      <div id="panel-text" class="input-panel hidden">
+        <div class="text-input-wrapper">
+          <textarea id="text-query-input" placeholder="Type your query in Hindi or English (e.g. मैनहट्टन परियोजना की सफलता का प्रभाव क्या था?)..." rows="3"></textarea>
+          <button id="send-text-btn" class="btn-primary">
+            <span>Submit Query</span>
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Execution Stepper Timeline (Honest Post-Response Playback) -->
+    <section id="stepper-section" class="stepper-section glass-panel hidden">
+      <div class="section-title">
+        <h3><i class="fa-solid fa-bars-progress"></i> Pipeline Stage Stepper (Actual Timings)</h3>
+        <span id="pipeline-status-tag" class="status-tag running">Processing Pipeline...</span>
+      </div>
+      <div class="stepper-container">
+        <div class="step-item" id="step-transcribe">
+          <div class="step-icon"><i class="fa-solid fa-waveform-lines"></i></div>
+          <div class="step-content">
+            <span class="step-name">1. Transcribe</span>
+            <span class="step-timing" id="time-transcribe">-- ms</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item" id="step-classify">
+          <div class="step-icon"><i class="fa-solid fa-shield-cat"></i></div>
+          <div class="step-content">
+            <span class="step-name">2. Classify</span>
+            <span class="step-timing" id="time-classify">-- ms</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item" id="step-retrieve">
+          <div class="step-icon"><i class="fa-solid fa-magnifying-glass-vector"></i></div>
+          <div class="step-content">
+            <span class="step-name">3. Retrieve</span>
+            <span class="step-timing" id="time-retrieve">-- ms</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item" id="step-check_grounding">
+          <div class="step-icon"><i class="fa-solid fa-shield-halved"></i></div>
+          <div class="step-content">
+            <span class="step-name">4. Guardrails</span>
+            <span class="step-timing" id="time-check_grounding">-- ms</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item" id="step-generate">
+          <div class="step-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+          <div class="step-content">
+            <span class="step-name">5. Generate</span>
+            <span class="step-timing" id="time-generate">-- ms</span>
+          </div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step-item" id="step-verify">
+          <div class="step-icon"><i class="fa-solid fa-check-double"></i></div>
+          <div class="step-content">
+            <span class="step-name">6. Verify</span>
+            <span class="step-timing" id="time-verify">-- ms</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results Section -->
+    <div id="results-container" class="results-grid hidden">
+      <!-- Answer Panel -->
+      <section class="answer-section glass-panel">
+        <!-- Live Transcript Display Panel -->
+        <div id="transcript-panel" class="transcript-box hidden">
+          <div class="transcript-header">
+            <i class="fa-solid fa-quote-left"></i>
+            <span>Speech-to-Text Transcript:</span>
+          </div>
+          <div id="transcript-text" class="transcript-body"></div>
+        </div>
+
+        <div class="panel-header">
+          <h2><i class="fa-solid fa-comment-dots"></i> Grounded Answer</h2>
+          <div class="header-actions">
+            <button id="tts-toggle-btn" class="toggle-btn-small" title="Toggle Voice Read Aloud">
+              <i class="fa-solid fa-volume-high"></i> <span>Read Aloud</span>
+            </button>
+            <div id="grounding-badge" class="badge-success">
+              <i class="fa-solid fa-shield-check"></i> Grounded Answer
+            </div>
+          </div>
+        </div>
+
+
+        
+        <!-- Short-Circuit Warning (Hidden by default) -->
+        <div id="short-circuit-banner" class="warning-banner hidden">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div>
+            <strong>Pipeline Short-Circuited: Insufficient Grounding</strong>
+            <p>Retrieved corpus chunks fell below relevance threshold (0.83). Pipeline stopped early to prevent hallucination.</p>
+          </div>
+        </div>
+
+        <div id="answer-content" class="answer-box">
+          <!-- Answer text dynamically injected here -->
+        </div>
+
+        <div id="flagged-claims-wrapper" class="flagged-claims-box hidden">
+          <h4><i class="fa-solid fa-flag"></i> Verifier Safety Audit</h4>
+          <ul id="flagged-claims-list"></ul>
+        </div>
+      </section>
+
+      <!-- Right Column: Latency Metrics & Citations -->
+      <div class="side-column">
+        <!-- Latency Breakdown Panel -->
+        <section class="latency-section glass-panel">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-gauge-high"></i> Latency Breakdown</h2>
+            <div id="total-latency-badge" class="badge-latency">
+              Total: <strong>0.0 ms</strong>
+            </div>
+          </div>
+          <div class="latency-bars-container" id="latency-bars">
+            <!-- Dynamic stage bars injected here -->
+          </div>
+        </section>
+
+        <!-- Sources & Citations Panel -->
+        <section class="citations-section glass-panel">
+          <div class="panel-header">
+            <h2><i class="fa-solid fa-book-bookmark"></i> Retrieved Sources</h2>
+            <span id="sources-count" class="count-badge">0 sources</span>
+          </div>
+          <div id="citations-list" class="citations-list">
+            <!-- Citation cards injected here -->
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <p>RAGinGoa &copy; 2026 — Verified 6-Stage Multilingual RAG Pipeline</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -3,6 +3,7 @@ The harness: runs all 6 stages in order, collects timing for each,
 and short-circuits early when guardrails say to (off-topic / unsafe /
 not grounded) — this is both correctness AND a latency optimization.
 """
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -15,9 +16,15 @@ from app.pipeline.types import QueryVerdict, StageTiming
 from app.pipeline.verify import verify
 
 
+def _is_hindi(text: str) -> bool:
+    """Checks if text contains Devanagari script (Hindi)."""
+    return bool(re.search(r"[\u0900-\u097F]", text))
+
+
 @dataclass
 class PipelineResult:
     answer: str
+    transcript: str = ""
     citations: list[str] = field(default_factory=list)
     is_fully_grounded: bool = True
     flagged_claims: list[Any] = field(default_factory=list)
@@ -31,6 +38,7 @@ class PipelineResult:
     def to_dict(self) -> dict:
         return {
             "answer": self.answer,
+            "transcript": self.transcript,
             "citations": self.citations,
             "is_fully_grounded": self.is_fully_grounded,
             "flagged_claims": [
@@ -54,6 +62,7 @@ def run_pipeline(audio_bytes: bytes) -> PipelineResult:
     except TranscriptionError:
         return PipelineResult(
             answer="Sorry, I didn't catch that — could you try again?",
+            transcript="",
             stopped_at="transcribe",
             timings=timings,
         )
@@ -61,21 +70,26 @@ def run_pipeline(audio_bytes: bytes) -> PipelineResult:
     if not transcript.text:
         return PipelineResult(
             answer="I couldn't hear any clear speech in the audio file — please try recording again.",
+            transcript="",
             stopped_at="transcribe",
             timings=timings,
         )
+
+    is_hi = _is_hindi(transcript.text)
 
     # Stage 2: classify
     intent = classify_query(transcript.text, timings=timings)
     if intent.verdict == QueryVerdict.UNSAFE:
         return PipelineResult(
-            answer="I can't help with that request.",
+            answer="मैं इस अनुरोध में सहायता नहीं कर सकता।" if is_hi else "I can't help with that request.",
+            transcript=transcript.text,
             stopped_at="classify_query",
             timings=timings,
         )
     if intent.verdict == QueryVerdict.OFF_TOPIC:
         return PipelineResult(
-            answer="That's outside what this dataset covers, so I don't have a grounded answer for it.",
+            answer="यह विषय इस डेटासेट के दायरे से बाहर है, इसलिए मेरे पास इसका उत्तर नहीं है।" if is_hi else "That's outside what this dataset covers, so I don't have a grounded answer for it.",
+            transcript=transcript.text,
             stopped_at="classify_query",
             timings=timings,
         )
@@ -87,7 +101,8 @@ def run_pipeline(audio_bytes: bytes) -> PipelineResult:
     grounding = check_grounding(chunks, timings=timings)
     if not grounding.can_answer:
         return PipelineResult(
-            answer="I don't have enough information in the dataset to answer that confidently.",
+            answer="मेरे पास इस सवाल का उत्तर देने के लिए डेटासेट में पर्याप्त जानकारी उपलब्ध नहीं है।" if is_hi else "I don't have enough information in the dataset to answer that confidently.",
+            transcript=transcript.text,
             stopped_at="check_grounding",
             timings=timings,
         )
@@ -100,6 +115,7 @@ def run_pipeline(audio_bytes: bytes) -> PipelineResult:
 
     return PipelineResult(
         answer=verified.text,
+        transcript=transcript.text,
         citations=verified.citations,
         is_fully_grounded=verified.is_fully_grounded,
         flagged_claims=verified.flagged_claims,
@@ -120,21 +136,26 @@ def run_pipeline_text(query_text: str) -> PipelineResult:
     if not text:
         return PipelineResult(
             answer="Empty query text provided.",
+            transcript="",
             stopped_at="classify_query",
             timings=timings,
         )
+
+    is_hi = _is_hindi(text)
 
     # Stage 2: classify
     intent = classify_query(text, timings=timings)
     if intent.verdict == QueryVerdict.UNSAFE:
         return PipelineResult(
-            answer="I can't help with that request.",
+            answer="मैं इस अनुरोध में सहायता नहीं कर सकता।" if is_hi else "I can't help with that request.",
+            transcript=text,
             stopped_at="classify_query",
             timings=timings,
         )
     if intent.verdict == QueryVerdict.OFF_TOPIC:
         return PipelineResult(
-            answer="That's outside what this dataset covers, so I don't have a grounded answer for it.",
+            answer="यह विषय इस डेटासेट के दायरे से बाहर है, इसलिए मेरे पास इसका उत्तर नहीं है।" if is_hi else "That's outside what this dataset covers, so I don't have a grounded answer for it.",
+            transcript=text,
             stopped_at="classify_query",
             timings=timings,
         )
@@ -146,7 +167,8 @@ def run_pipeline_text(query_text: str) -> PipelineResult:
     grounding = check_grounding(chunks, timings=timings)
     if not grounding.can_answer:
         return PipelineResult(
-            answer="I don't have enough information in the dataset to answer that confidently.",
+            answer="मेरे पास इस सवाल का उत्तर देने के लिए डेटासेट में पर्याप्त जानकारी उपलब्ध नहीं है।" if is_hi else "I don't have enough information in the dataset to answer that confidently.",
+            transcript=text,
             stopped_at="check_grounding",
             timings=timings,
         )
@@ -159,10 +181,13 @@ def run_pipeline_text(query_text: str) -> PipelineResult:
 
     return PipelineResult(
         answer=verified.text,
+        transcript=text,
         citations=verified.citations,
         is_fully_grounded=verified.is_fully_grounded,
         flagged_claims=verified.flagged_claims,
         stopped_at="verify",
         timings=timings,
     )
+
+
 

@@ -119,8 +119,21 @@ def run_tests():
         assert retrieval_latencies[1] < 2000, f"Retrieve stage should be warm on run 2, got {retrieval_latencies[1]}ms"
 
     print("\n" + "=" * 60)
-    print("SUMMARY: ALL PHASE 2 CLOSEOUT & INTEGRATION TESTS PASSED PERFECTLY!")
+    print("TEST 5: POST /ask_text Direct Text Query Test")
     print("=" * 60)
+    res_text = client.post("/ask_text", json={"query": "मैनहट्टन परियोजना क्या थी?"})
+    print(f"-> Status Code: {res_text.status_code}")
+    body_text = res_text.json()
+    print(f"-> Response Body JSON:\n{json.dumps(body_text, indent=2, ensure_ascii=False)}")
+    assert res_text.status_code == 200, "POST /ask_text must return HTTP 200"
+    assert "answer" in body_text, "Missing answer in text query response"
+    assert "latency_ms" in body_text, "Missing latency_ms in text query response"
+    assert "retrieve" in body_text["latency_ms"]["stages"], "Missing retrieve latency in text response"
+
+    print("\n" + "=" * 60)
+    print("SUMMARY: ALL INTEGRATION TESTS PASSED PERFECTLY!")
+    print("=" * 60)
+
 
 
 if __name__ == "__main__":
