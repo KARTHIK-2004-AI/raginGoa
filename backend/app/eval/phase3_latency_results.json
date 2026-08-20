@@ -1,0 +1,32 @@
+{
+  "dataset_sample_limit": 200,
+  "dataset_valid_queries_found": 125,
+  "queries_attempted": 100,
+  "cold_start_query": {
+    "query_text": "मैनहट्टन परियोजना की सफलता का तुरंत क्या प्रभाव पड़ा?",
+    "cold_start_first_request_total_ms": 20698.58,
+    "cold_start_first_request_retrieve_ms": 14622.94,
+    "status": "excluded_from_percentiles"
+  },
+  "warm_benchmark_sample_size": 99,
+  "retrieval_only_latency_ms": {
+    "P50": 122.77,
+    "P70": 160.34,
+    "P100": 575.59
+  },
+  "full_pipeline_completed_only_latency_ms": {
+    "sample_size": 96,
+    "P50": 4015.69,
+    "P70": 5023.41,
+    "P100": 8442.54
+  },
+  "full_pipeline_incl_short_circuits_latency_ms": {
+    "sample_size": 99,
+    "short_circuit_breakdown": {
+      "check_grounding": 3
+    },
+    "P50": 3964.81,
+    "P70": 4945.78,
+    "P100": 8442.54
+  }
+}

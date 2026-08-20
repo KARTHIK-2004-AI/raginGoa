@@ -86,14 +86,16 @@ def retrieve(
         ]
 
         top_score = chunks[0].score if chunks else 0.0
+        safe_query = cleaned_query.encode("ascii", "backslashreplace").decode("ascii")
         logger.info(
             "Qdrant retrieve succeeded: collection='%s', hits=%d, top_score=%.4f, query='%s'",
             target_collection,
             len(chunks),
             top_score,
-            cleaned_query,
+            safe_query,
         )
         return chunks
+
 
     except Exception as e:
         logger.error(
