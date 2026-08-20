@@ -12,10 +12,8 @@ Usage:
 import argparse
 import csv
 
-from qdrant_client import QdrantClient
-from sentence_transformers import SentenceTransformer
-
 from app.config import settings
+from app.pipeline.embed import get_embedder, get_qdrant_client
 
 COLLECTIONS = ["chunks_fixed", "chunks_semantic", "chunks_structured"]
 
@@ -67,8 +65,8 @@ def main():
     args = parser.parse_args()
 
     eval_pairs = load_eval_set(args.eval_file)
-    embedder = SentenceTransformer(settings.embedding_model_name)
-    client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key or None)
+    embedder = get_embedder()
+    client = get_qdrant_client()
 
     print(f"Evaluating {len(eval_pairs)} queries across {len(COLLECTIONS)} collections at k={args.k}\n")
     print(f"{'Collection':<20} {'Recall@k':<10} {'MRR':<10} {'N'}")

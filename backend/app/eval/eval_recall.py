@@ -22,15 +22,11 @@ Instead we use word-level overlap: split both texts into whitespace tokens,
 compute |intersection| / min(len(chunk_tokens), len(gt_tokens)), and count
 it as a hit if that ratio >= OVERLAP_THRESHOLD. This tolerates a chunk being
 a partial slice of the ground-truth passage (common with fixed chunking)
-while still requiring substantial real overlap, not coincidental word reuse.
-
-Uses the SAME 200-row sample used during indexing (see build_index.py) so
-ground truth lines up with what's actually in Qdrant right now.
 """
 from dataclasses import dataclass
-
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
+from app.pipeline.embed import get_embedder, get_qdrant_client
 
 from app.config import settings
 from app.indexing.build_index import LANG_CODE_MAP, load_language_dataset, iter_parquet_rows
@@ -142,8 +138,8 @@ def main(language: str = "hi", sample_limit: int = 200) -> None:
         print("No eval queries found — nothing to evaluate. Check is_selected data.")
         return
 
-    embedder = SentenceTransformer(settings.embedding_model_name)
-    client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key or None)
+    embedder = get_embedder()
+    client = get_qdrant_client()
 
     print()
     print(f"{'Collection':<20} " + " ".join(f"recall@{k:<6}" for k in K_VALUES))

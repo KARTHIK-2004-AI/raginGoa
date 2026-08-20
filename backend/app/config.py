@@ -15,17 +15,18 @@ class Settings:
     sarvam_model: str = os.getenv("SARVAM_MODEL", "saaras:v3")
     sarvam_mode: str = os.getenv("SARVAM_MODE", "transcribe")
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
     qdrant_url: str = os.getenv("QDRANT_URL", "http://localhost:6333")
     qdrant_api_key: str = os.getenv("QDRANT_API_KEY", "")
 
     embedding_model_name: str = "intfloat/multilingual-e5-small"
 
     # Which Qdrant collection is "in production" for the live demo.
-    # Swap this once you've picked a winning chunking strategy (see eval_retrieval.py results).
-    active_collection: str = os.getenv("ACTIVE_COLLECTION", "chunks_structured")
+    # Updated to 'chunks_semantic' based on Phase 1 high recall evaluation results.
+    active_collection: str = os.getenv("ACTIVE_COLLECTION", "chunks_semantic")
 
-    # Guardrail thresholds — tune these once you see real retrieval scores
-    grounding_similarity_threshold: float = 0.55
+    # Guardrail thresholds — empirically calibrated against Qdrant chunks_semantic
+    grounding_similarity_threshold: float = 0.83
     off_topic_similarity_threshold: float = 0.40
 
     retrieval_top_k: int = 5

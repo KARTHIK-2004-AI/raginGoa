@@ -9,9 +9,16 @@ Run locally:
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.pipeline.embed import get_embedder, get_qdrant_client
 from app.pipeline.orchestrator import run_pipeline
 
 app = FastAPI(title="RAGinGoa")
+
+@app.on_event("startup")
+def startup_event():
+    """Pre-warms SentenceTransformer embedder and Qdrant client at server startup."""
+    get_embedder()
+    get_qdrant_client()
 
 # Wide open for hackathon dev — tighten before the live demo if time allows.
 app.add_middleware(

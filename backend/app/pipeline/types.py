@@ -58,10 +58,18 @@ class Answer:
 
 
 @dataclass
+class FlaggedClaim:
+    claim_text: str
+    citation_index: int | None
+    chunk_id: str | None
+    reason: str
+
+
+@dataclass
 class VerifiedAnswer:
     text: str
-    citations: list[str]
-    flagged_claims: list[str] = field(default_factory=list)
+    citations: list[str] = field(default_factory=list)
+    flagged_claims: list[FlaggedClaim] = field(default_factory=list)
     is_fully_grounded: bool = True
 
 

@@ -4,6 +4,7 @@ and short-circuits early when guardrails say to (off-topic / unsafe /
 not grounded) — this is both correctness AND a latency optimization.
 """
 from dataclasses import dataclass, field
+from typing import Any
 
 from app.pipeline.classify import classify_query
 from app.pipeline.generate import generate
@@ -19,7 +20,7 @@ class PipelineResult:
     answer: str
     citations: list[str] = field(default_factory=list)
     is_fully_grounded: bool = True
-    flagged_claims: list[str] = field(default_factory=list)
+    flagged_claims: list[Any] = field(default_factory=list)
     stopped_at: str = "verify"  # which stage the pipeline ended at
     timings: list[StageTiming] = field(default_factory=list)
 
@@ -32,7 +33,10 @@ class PipelineResult:
             "answer": self.answer,
             "citations": self.citations,
             "is_fully_grounded": self.is_fully_grounded,
-            "flagged_claims": self.flagged_claims,
+            "flagged_claims": [
+                fc.__dict__ if hasattr(fc, "__dict__") else str(fc)
+                for fc in self.flagged_claims
+            ],
             "stopped_at": self.stopped_at,
             "latency_ms": {
                 "total": round(self.total_ms, 2),
