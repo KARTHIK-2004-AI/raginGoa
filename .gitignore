@@ -1,10 +1,50 @@
-__pycache__/
-*.pyc
+# Secrets & Environment Files
 .env
+.env.*
+*.env
+backend/.env
+backend/.env.*
+
+# Python Virtual Environments & Packages
 .venv/
 venv/
+env/
+ENV/
+*.venv
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Databases & Vector Storage
+qdrant_storage/
+*.sqlite3
+*.db
+
+# Frontend Dependencies & Builds
 node_modules/
 dist/
-*.csv
-!eval_queries.csv
+.build/
+
+# Operating System & IDE Files
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Large Binary / Media Uploads (Except test fixtures)
+*.wav
+*.mp3
+*.ogg
+!test_fixtures/*.wav
+
+# Allow evaluation dataset queries
+!eval_queries.csv
