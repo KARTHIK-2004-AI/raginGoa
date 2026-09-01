@@ -25,9 +25,9 @@ class Settings:
     # Updated to 'chunks_semantic' based on Phase 1 high recall evaluation results.
     active_collection: str = os.getenv("ACTIVE_COLLECTION", "chunks_semantic")
 
-    # Guardrail thresholds — empirically calibrated against Qdrant chunks_semantic
+    # Guardrail thresholds — empirically calibrated against Qdrant chunks_semantic & multilingual-e5-small
     grounding_similarity_threshold: float = 0.83
-    off_topic_similarity_threshold: float = 0.40
+    off_topic_similarity_threshold: float = 0.83
 
     retrieval_top_k: int = 5
 

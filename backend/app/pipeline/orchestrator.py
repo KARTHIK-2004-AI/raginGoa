@@ -109,6 +109,13 @@ def run_pipeline(audio_bytes: bytes) -> PipelineResult:
 
     # Stage 5: generate
     answer = generate(transcript.text, chunks, timings=timings)
+    if not answer.text:
+        return PipelineResult(
+            answer="अस्थायी रूप से जनरेटिव सेवा अनुपलब्ध है। कृपया कुछ समय बाद प्रयास करें।" if is_hi else "The generation service is temporarily unavailable. Please try again in a moment.",
+            transcript=transcript.text,
+            stopped_at="generate",
+            timings=timings,
+        )
 
     # Stage 6: verify
     verified = verify(answer, chunks, timings=timings)
@@ -175,6 +182,13 @@ def run_pipeline_text(query_text: str) -> PipelineResult:
 
     # Stage 5: generate
     answer = generate(text, chunks, timings=timings)
+    if not answer.text:
+        return PipelineResult(
+            answer="अस्थायी रूप से जनरेटिव सेवा अनुपलब्ध है। कृपया कुछ समय बाद प्रयास करें।" if is_hi else "The generation service is temporarily unavailable. Please try again in a moment.",
+            transcript=text,
+            stopped_at="generate",
+            timings=timings,
+        )
 
     # Stage 6: verify
     verified = verify(answer, chunks, timings=timings)

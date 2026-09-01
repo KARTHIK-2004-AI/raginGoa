@@ -30,9 +30,29 @@ _UNSAFE_PATTERNS = [
 
 _UNSAFE_REGEX = re.compile("|".join(_UNSAFE_PATTERNS), re.IGNORECASE)
 
+# Direct prompt injection & role manipulation heuristics (keyword/regex first-pass filter)
+_INJECTION_PATTERNS = [
+    r"\bignore\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions|rules)\b",
+    r"\bdisregard\s+(?:all\s+)?(?:previous|prior)\s+(?:guidance|rules)\b",
+    r"\bforget\s+everything\s+(?:you\s+were\s+told)?\b",
+    r"\bshow\s+(?:me\s+)?(?:your\s+)?system\s+prompt\b",
+    r"\bprint\s+(?:your\s+)?system\s+prompt\b",
+    r"\bsecret\s+(?:developer\s+)?key\b",
+    r"\bdeveloper\s+mode\b",
+    r"\byou\s+are\s+now\s+dan\b",
+    r"\bact\s+as\s+(?:an?\s+)?unrestricted\b",
+    r"\bpretend\s+(?:that\s+)?restrictions?\s+don'?t\s+exist\b",
+    r"\[\s*SYSTEM\s*:",
+    r"\[\s*ASSISTANT\s*:",
+    r"<\|im_start\|>",
+    r"<\/system>",
+]
+
+_INJECTION_REGEX = re.compile("|".join(_INJECTION_PATTERNS), re.IGNORECASE)
+
 # Lexical gibberish & garbage input heuristics
 _REPEATED_CHARS_REGEX = re.compile(r"(.)\1{4,}")  # 5+ repeated characters (e.g., "aaaaa", "zzzzzz", "ककककक")
-_LONG_CONSONANTS_REGEX = re.compile(r"[bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ]{4,}")  # 4+ consecutive English consonants
+_LONG_CONSONANTS_REGEX = re.compile(r"[bcdfghjklmnpqrstvwxzBCDFGHJKLMNPQRSTVWXZ]{5,}")  # 5+ consecutive English consonants (excluding y/Y)
 _SYMBOL_SPAM_REGEX = re.compile(r"^[^\w\s]+$")  # Pure punctuation/symbol string
 
 # Devanagari-specific gibberish heuristics
@@ -40,11 +60,75 @@ _DEVANAGARI_VIRAMA_SPAM = re.compile(r"[\u094D\u0900-\u0903\u093A-\u094C]{3,}") 
 _DEVANAGARI_BARE_CONSONANTS = re.compile(r"[\u0915-\u0939\u0958-\u095F]{6,}")  # 6+ consecutive bare Devanagari consonants with no matras
 
 
+# Domain anchor texts for corpus centroid calculation (Goa domain exemplar embeddings)
+_GOA_DOMAIN_ANCHORS = [
+    "गोवा के पर्यटन स्थल और प्रसिद्ध समुद्र तट",
+    "Which is the most famous beach in Goa?",
+    "गोवा की राजधानी पणजी और इतिहास",
+    "Goa geography, climate, tourism, beaches, culture, and history",
+    "गोवा घूमने का सबसे अच्छा समय और मौसम",
+    "Baga Beach, Calangute Beach, Panaji, Mandovi River in Goa",
+]
+
+_DOMAIN_CENTROID = None
+
+
+def _get_domain_centroid():
+    """Lazily computes and caches normalized mean centroid embedding vector of Goa domain anchors."""
+    global _DOMAIN_CENTROID
+    if _DOMAIN_CENTROID is None:
+        try:
+            import numpy as np
+            from app.pipeline.embed import get_embedder
+
+            embedder = get_embedder()
+            texts = [f"passage: {t}" for t in _GOA_DOMAIN_ANCHORS]
+            vectors = embedder.encode(texts, normalize_embeddings=True)
+            centroid = np.mean(vectors, axis=0)
+            _DOMAIN_CENTROID = centroid / np.linalg.norm(centroid)
+        except Exception as e:
+            logger.warning("Failed to compute domain centroid: %s", e)
+            _DOMAIN_CENTROID = None
+    return _DOMAIN_CENTROID
+
+
 def _check_safety(text: str) -> str | None:
     match = _UNSAFE_REGEX.search(text)
     if match:
         return match.group(0)
     return None
+
+
+def _check_injection(text: str) -> str | None:
+    match = _INJECTION_REGEX.search(text)
+    if match:
+        return match.group(0)
+    return None
+
+
+def _check_corpus_similarity(text: str) -> tuple[float, bool]:
+    """
+    Computes cosine similarity of query embedding against domain corpus centroid.
+    Returns (similarity_score, is_off_topic).
+    """
+    centroid = _get_domain_centroid()
+    if centroid is None:
+        return 1.0, False  # Fallback to passing if centroid fails
+
+    try:
+        import numpy as np
+        from app.config import settings
+        from app.pipeline.embed import get_embedder
+
+        embedder = get_embedder()
+        query_vec = embedder.encode(f"query: {text}", normalize_embeddings=True)
+        sim = float(np.dot(query_vec, centroid))
+        threshold = float(getattr(settings, "off_topic_similarity_threshold", 0.83))
+        is_off_topic = sim < threshold
+        return sim, is_off_topic
+    except Exception as e:
+        logger.warning("Corpus similarity check failed: %s", e)
+        return 1.0, False
 
 
 def _check_gibberish(text: str) -> str | None:
@@ -117,32 +201,48 @@ def classify_query(transcript_text: str) -> QueryIntent:
     """
     Classifies user transcript text (Stage 2 Gate):
     1. Empty input -> OFF_TOPIC
-    2. Unsafe keywords -> UNSAFE (Fast, no API cost)
+    2. Unsafe keywords or Direct Prompt Injections -> UNSAFE
     3. Gibberish/garbage input -> OFF_TOPIC (Fast lexical check)
-    4. Well-formed input -> IN_SCOPE (passes to Stage 4 Grounding Gate)
+    4. Off-topic domain similarity check -> OFF_TOPIC (Embedding distance < threshold)
+    5. Well-formed input -> IN_SCOPE (passes to Stage 4 Grounding Gate)
     """
     cleaned_text = transcript_text.strip()
     if not cleaned_text:
         logger.warning("classify_query received empty transcript.")
         return QueryIntent(verdict=QueryVerdict.OFF_TOPIC, reason="empty transcript input")
 
-    # Step 1: Safety Filter
+    # Step 1: Safety Filter (Dangerous / Harmful content)
     matched_unsafe = _check_safety(cleaned_text)
     if matched_unsafe:
         reason = f"matched safety keyword '{matched_unsafe}'"
         logger.warning("classify_query verdict=UNSAFE (%s)", reason)
         return QueryIntent(verdict=QueryVerdict.UNSAFE, reason=reason)
 
-    # Step 2: Lexical Gibberish & Input Quality Filter
+    # Step 2: Direct Prompt Injection Filter
+    matched_injection = _check_injection(cleaned_text)
+    if matched_injection:
+        reason = f"detected prompt injection pattern '{matched_injection}'"
+        logger.warning("classify_query verdict=UNSAFE (%s)", reason)
+        return QueryIntent(verdict=QueryVerdict.UNSAFE, reason=reason)
+
+    # Step 3: Lexical Gibberish & Input Quality Filter
     gibberish_reason = _check_gibberish(cleaned_text)
     if gibberish_reason:
         reason = f"detected gibberish/nonsense input ({gibberish_reason})"
         logger.info("classify_query verdict=OFF_TOPIC (%s)", reason)
         return QueryIntent(verdict=QueryVerdict.OFF_TOPIC, reason=reason)
 
-    # Step 3: Well-formed input passes cleanly to Stage 4 Grounding Gate
-    reason = "passed safety and input quality checks"
+    # Step 4: Embedding-based Corpus Domain Similarity Check
+    sim_score, is_off_topic = _check_corpus_similarity(cleaned_text)
+    if is_off_topic:
+        reason = f"domain cosine similarity {sim_score:.4f} below threshold"
+        logger.info("classify_query verdict=OFF_TOPIC (%s)", reason)
+        return QueryIntent(verdict=QueryVerdict.OFF_TOPIC, reason=reason)
+
+    # Step 5: Well-formed input passes cleanly
+    reason = f"passed safety, injection, and domain checks (similarity={sim_score:.4f})"
     logger.info("classify_query verdict=IN_SCOPE (%s)", reason)
     return QueryIntent(verdict=QueryVerdict.IN_SCOPE, reason=reason)
+
 
 

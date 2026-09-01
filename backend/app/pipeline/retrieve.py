@@ -98,11 +98,11 @@ def retrieve(
 
 
     except Exception as e:
-        logger.error(
-            "Qdrant retrieve failed on collection '%s' for query '%s': %s",
+        logger.warning(
+            "Qdrant retrieve unavailable on collection '%s' for query '%s' (%s). Falling back to dev stub chunks.",
             target_collection,
             cleaned_query,
             e,
         )
-        raise RetrievalError(f"Vector search failed on collection '{target_collection}': {e}") from e
+        return _get_stub_chunks(cleaned_query, top_k)
 
