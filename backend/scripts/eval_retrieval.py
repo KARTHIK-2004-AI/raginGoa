@@ -11,6 +11,15 @@ Usage:
 """
 import argparse
 import csv
+import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
+from qdrant_client import QdrantClient
+from sentence_transformers import SentenceTransformer
 
 from app.config import settings
 from app.pipeline.embed import get_embedder, get_qdrant_client

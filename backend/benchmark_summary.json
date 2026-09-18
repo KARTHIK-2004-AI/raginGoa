@@ -1,0 +1,29 @@
+{
+  "retrieval_evaluation": {
+    "chunks_fixed": {
+      "collection": "chunks_fixed",
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "n_queries": 30
+    },
+    "chunks_semantic": {
+      "collection": "chunks_semantic",
+      "recall_at_k": 1.0,
+      "mrr": 0.983,
+      "n_queries": 30
+    },
+    "chunks_structured": {
+      "collection": "chunks_structured",
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "n_queries": 30
+    }
+  },
+  "latency_ms": {
+    "p50": 108.9,
+    "p70": 141.82,
+    "p100": 193.25,
+    "mean": 120.31,
+    "n": 30
+  }
+}

@@ -15,6 +15,12 @@ backend_dir = Path(r"c:\Users\YS TECH CENTER\Downloads\raginGoa\raginGoa\backend
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
+# Force UTF-8 on Windows
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 # Configure logging to stdout so user sees exact execution logs
 logging.basicConfig(
     level=logging.INFO,

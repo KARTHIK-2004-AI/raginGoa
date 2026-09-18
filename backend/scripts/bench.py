@@ -14,8 +14,14 @@ that alone satisfies part of requirement 3/4 while you wire up STT.
 import argparse
 import csv
 import statistics
+import sys
 import time
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 
 from app.pipeline.retrieve import retrieve
 from app.pipeline.types import StageTiming
@@ -41,7 +47,7 @@ def bench_retrieval_only(queries: list[str], out_csv: Path) -> None:
         latencies.append(elapsed_ms)
         rows.append({"query": q, "latency_ms": round(elapsed_ms, 2)})
 
-    with out_csv.open("w", newline="") as f:
+    with out_csv.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=["query", "latency_ms"])
         writer.writeheader()
         writer.writerows(rows)

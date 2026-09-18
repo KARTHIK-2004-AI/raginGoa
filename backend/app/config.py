@@ -32,7 +32,7 @@ class Settings:
     retrieval_top_k: int = 5
 
     # Retry/timeout policy for external calls
-    stt_timeout_seconds: float = 8.0
+    stt_timeout_seconds: float = 25.0
     stt_max_retries: int = 2
     llm_timeout_seconds: float = 10.0
     llm_max_retries: int = 2

@@ -113,7 +113,8 @@ def _check_corpus_similarity(text: str) -> tuple[float, bool]:
     """
     centroid = _get_domain_centroid()
     if centroid is None:
-        return 1.0, False  # Fallback to passing if centroid fails
+        logger.error("Domain centroid unavailable — cannot verify domain similarity.")
+        return 0.0, True
 
     try:
         import numpy as np
@@ -127,8 +128,8 @@ def _check_corpus_similarity(text: str) -> tuple[float, bool]:
         is_off_topic = sim < threshold
         return sim, is_off_topic
     except Exception as e:
-        logger.warning("Corpus similarity check failed: %s", e)
-        return 1.0, False
+        logger.error("Corpus similarity check calculation failed: %s", e)
+        return 0.0, True
 
 
 def _check_gibberish(text: str) -> str | None:
